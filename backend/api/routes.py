@@ -1,56 +1,31 @@
-
-from fastapi import APIRouter
-from models.user_models import LoginRequest
+from fastapi import APIRouter, HTTPException
+from backend.models.user_models import LoginRequest, LoginResponse
+from backend.services.auth import verify_password, create_access_token
 
 router = APIRouter()
 
 
-# LOGIN
-@router.post("/login")
+# dummy user (for now)
+fake_user = {
+    "username": "admin",
+    "password_hash": "$2b$12$5f7E2q9L8h4Z7U6sP0ZQfO2X4H8Qv6z0r3Qb0k2rV0M2g7Yk8WZ9S", 
+    "role": "admin"
+}
+
+
+@router.post("/login", response_model=LoginResponse)
 def login(data: LoginRequest):
+
+    if data.username != fake_user["username"]:
+        raise HTTPException(status_code=401, detail="Invalid username")
+
+    if not verify_password(data.password, fake_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+    token = create_access_token({"sub": data.username})
+
     return {
-        "message": "Login API placeholder",
-        "username": data.username
-    }
-
-
-# REALTIME DATA
-@router.get("/realtime")
-def get_realtime():
-    return {
-        "timestamp": "2026-03-12T10:00:00",
-        "generation": 120,
-        "schedule": 115,
-        "frequency": 49.9,
-        "deviation": 5
-    }
-
-
-# HISTORICAL DATA
-@router.get("/historical")
-def get_historical():
-    return {
-        "data": [
-            {"time": "10:00", "generation": 120, "schedule": 115},
-            {"time": "10:15", "generation": 118, "schedule": 115}
-        ]
-    }
-
-
-# DSM DATA
-@router.get("/dsm")
-def get_dsm():
-    return {
-        "schedule": 115,
-        "actual": 120,
-        "deviation": 5,
-        "penalty": 250
-    }
-
-
-# LOGOUT
-@router.post("/logout")
-def logout():
-    return {
-        "message": "User logged out successfully"
+        "token": token,
+        "username": data.username,
+        "role": fake_user["role"]
     }
