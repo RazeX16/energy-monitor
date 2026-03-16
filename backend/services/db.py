@@ -1,16 +1,17 @@
 import psycopg2
-from backend.services.auth_service import hash_password
+from services.auth import hash_password
 
 
 def get_db_connection():
     conn = psycopg2.connect(
-        database="energy_monitor",
+        database="energy-monitor",
         user="postgres",
-        password="password",
+        password="Ajdil@29",
         host="localhost",
         port="5432"
     )
     return conn
+
 
 users = {
     "admin": {
