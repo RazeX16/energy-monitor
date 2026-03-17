@@ -1,37 +1,45 @@
 import time
 import random
 from datetime import datetime
-from services.db import get_db_connection
+from backend.services.db import get_db_connection
 
 
 def generate_data():
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    print("Generator started...")
 
     while True:
+        try:
+           
+            conn = get_db_connection()
+            cursor = conn.cursor()
+           
 
-        timestamp = datetime.now()
-        plant_id = 1
-        frequency = round(random.uniform(49.8, 50.2), 2)
-        generation = round(random.uniform(110, 130), 2)
-        schedule = 115
-        deviation = generation - schedule
+            timestamp = datetime.now()
+            plant_id = 1
+            frequency = round(random.uniform(49.5, 50.5), 2)
+            generation = round(random.uniform(100, 150), 2)
+            schedule = 120
+            deviation = generation - schedule
 
-        cursor.execute(
-            """
-            INSERT INTO realtime_data
-            (timestamp, plant_id, frequency, generation, schedule, deviation)
-            VALUES (%s,%s,%s,%s,%s,%s)
-            """,
-            (timestamp, plant_id, frequency, generation, schedule, deviation)
-        )
+            print("Inserting data...")
 
-        conn.commit()
+            cursor.execute("""
+                INSERT INTO realtime_data
+                (timestamp, plant_id, frequency, generation, schedule, deviation)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (timestamp, plant_id, frequency, generation, schedule, deviation))
 
-        print("Inserted:", timestamp, frequency, generation)
+            conn.commit()
+            print(f"Inserted: {timestamp} | Gen: {generation} | Freq: {frequency}")
 
-        time.sleep(5)
+            cursor.close()
+            conn.close()
+
+            time.sleep(5)
+
+        except Exception as e:
+            print("Error:", e)
+            break
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 import psycopg2
-from services.auth import hash_password
-
+from backend.services.auth import hash_password
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -11,7 +10,6 @@ def get_db_connection():
         port="5432"
     )
     return conn
-
 
 users = {
     "admin": {

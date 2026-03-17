@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from models.user_models import LoginRequest
+from backend.models.user_models import LoginRequest
+from backend.services.db import get_db_connection
 
 router = APIRouter()
 
@@ -16,13 +17,32 @@ def login(data: LoginRequest):
 # REALTIME DATA
 @router.get("/realtime")
 def get_realtime():
-    return {
-        "timestamp": "2026-03-12T10:00:00",
-        "generation": 120,
-        "schedule": 115,
-        "frequency": 49.9,
-        "deviation": 5
-    }
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT timestamp, generation, schedule, frequency, deviation
+        FROM realtime_data
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """)
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if row:
+        return {
+            "timestamp": row[0],
+            "generation": row[1],
+            "schedule": row[2],
+            "frequency": row[3],
+            "deviation": row[4]
+        }
+
+    return {"message": "No realtime data available"}
 
 
 # HISTORICAL DATA
