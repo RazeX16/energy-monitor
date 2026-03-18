@@ -46,36 +46,37 @@ def get_realtime():
 
 
 # HISTORICAL DATA
-@router.get("/historical")
-def get_historical(limit: int = 100):
+from datetime import datetime
+from fastapi import Query
 
+@router.get("/historical")
+def get_historical_report(
+    start: datetime = Query(...), 
+    end: datetime = Query(...)
+):
     conn = get_db_connection()
     cursor = conn.cursor()
+    try:
+        # We add a WHERE clause to filter the data by your parameters
+        query = """
+            SELECT 
+                time_bucket('15 minutes', timestamp) AS block,
+                AVG(generation), AVG(frequency), SUM(deviation)
+            FROM realtime_data
+            WHERE timestamp >= %s AND timestamp <= %s
+            GROUP BY block
+            ORDER BY block DESC;
+        """
+        cursor.execute(query, (start, end))
+        rows = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT timestamp, generation, schedule, frequency, deviation
-        FROM realtime_data
-        ORDER BY timestamp ASC
-        LIMIT %s
-    """, (limit,))
-
-    rows = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    data = []
-
-    for row in rows:
-        data.append({
-            "time": row[0].strftime("%H:%M"),  
-            "generation": row[1],
-            "schedule": row[2],
-            "frequency": row[3],
-            "deviation": row[4]
-        })
-
-    return {"data": data}
+        return [
+            {"time": r[0], "gen": round(r[1], 2), "freq": round(r[2], 2), "dev": r[3]} 
+            for r in rows
+        ]
+    finally:
+        cursor.close()
+        conn.close()
 
 
 
