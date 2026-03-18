@@ -47,13 +47,36 @@ def get_realtime():
 
 # HISTORICAL DATA
 @router.get("/historical")
-def get_historical():
-    return {
-        "data": [
-            {"time": "10:00", "generation": 120, "schedule": 115},
-            {"time": "10:15", "generation": 118, "schedule": 115}
-        ]
-    }
+def get_historical(limit: int = 100):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT timestamp, generation, schedule, frequency, deviation
+        FROM realtime_data
+        ORDER BY timestamp ASC
+        LIMIT %s
+    """, (limit,))
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    data = []
+
+    for row in rows:
+        data.append({
+            "time": row[0].strftime("%H:%M"),  
+            "generation": row[1],
+            "schedule": row[2],
+            "frequency": row[3],
+            "deviation": row[4]
+        })
+
+    return {"data": data}
+
 
 
 # DSM DATA
