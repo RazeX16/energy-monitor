@@ -9,10 +9,10 @@ def generate_data():
 
     while True:
         try:
-           
+        
             conn = get_db_connection()
             cursor = conn.cursor()
-           
+        
 
             timestamp = datetime.now()
             plant_id = 1
