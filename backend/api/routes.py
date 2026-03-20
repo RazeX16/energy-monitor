@@ -81,15 +81,56 @@ def get_historical_report(
 
 
 # DSM DATA
+# DSM DATA
 @router.get("/dsm")
-def get_dsm():
-    return {
-        "schedule": 115,
-        "actual": 120,
-        "deviation": 5,
-        "penalty": 250
-    }
+def get_dsm(date: str):
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch latest record for given date
+    cursor.execute("""
+        SELECT timestamp, plant_id, schedule, generation
+        FROM realtime_data
+        WHERE DATE(timestamp) = %s
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, (date,))
+
+    row = cursor.fetchone()
+
+    if not row:
+        cursor.close()
+        conn.close()
+        return {"message": "No data found for given date"}
+
+    timestamp, plant_id, schedule, actual = row
+
+    # DSM Calculation
+    deviation = actual - schedule
+    penalty = deviation * 50  # static rate for now
+
+    # Store in DSM_records
+    cursor.execute("""
+        INSERT INTO DSM_records (
+            timestamp, plant_id, schedule, actual, deviation, penalty
+        )
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (timestamp, plant_id, schedule, actual, deviation, penalty))
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return {
+        "timestamp": timestamp,
+        "plant_id": plant_id,
+        "schedule": schedule,
+        "actual": actual,
+        "deviation": deviation,
+        "penalty": penalty
+    }
 
 # LOGOUT
 @router.post("/logout")
