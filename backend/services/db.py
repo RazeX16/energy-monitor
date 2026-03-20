@@ -7,8 +7,6 @@ def get_db_connection():
         database="energy-monitor",
         user="postgres",
         password="Ajdil@29",
-        host="192.168.1.175",
-        host="192.168.1.51",
         host="192.168.1.51",
         host="192.168.1.175",
         port="5432"

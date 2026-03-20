@@ -1,6 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from datetime import datetime
+
 from backend.models.user_models import LoginRequest
 from backend.services.db import get_db_connection
+from backend.services.dsm import compute_dsm
 
 router = APIRouter()
 
@@ -46,9 +49,6 @@ def get_realtime():
 
 
 # HISTORICAL DATA
-from datetime import datetime
-from fastapi import Query
-
 @router.get("/historical")
 def get_historical_report(
     start: datetime = Query(...), 
@@ -56,8 +56,8 @@ def get_historical_report(
 ):
     conn = get_db_connection()
     cursor = conn.cursor()
+
     try:
-        # We add a WHERE clause to filter the data by your parameters
         query = """
             SELECT 
                 time_bucket('15 minutes', timestamp) AS block,
@@ -71,7 +71,12 @@ def get_historical_report(
         rows = cursor.fetchall()
 
         return [
-            {"time": r[0], "gen": round(r[1], 2), "freq": round(r[2], 2), "dev": r[3]} 
+            {
+                "time": r[0],
+                "gen": round(r[1], 2),
+                "freq": round(r[2], 2),
+                "dev": r[3]
+            }
             for r in rows
         ]
     finally:
@@ -79,11 +84,38 @@ def get_historical_report(
         conn.close()
 
 
-
 # DSM DATA
 # DSM DATA
 @router.get("/dsm")
+<<<<<<< HEAD
 def get_dsm(date: str):
+=======
+def get_dsm():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT generation, schedule
+        FROM realtime_data
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """)
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not row:
+        return {"message": "No realtime data available"}
+
+    generation = float(row[0])
+    schedule = float(row[1])
+
+    rate = 50  # DSM rate (configurable later)
+
+    return compute_dsm(generation, schedule, rate)
+>>>>>>> c35bbb8 (dsm is done)
 
     conn = get_db_connection()
     cursor = conn.cursor()
