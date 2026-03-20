@@ -1,10 +1,7 @@
 from fastapi import APIRouter
 from backend.models.user_models import LoginRequest
 from backend.services.db import get_db_connection
-<<<<<<< HEAD
 
-=======
->>>>>>> b24e80d (changes made)
 router = APIRouter()
 
 
