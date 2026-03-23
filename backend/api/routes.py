@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from datetime import datetime
+from datetime import datetime, date
 
 from backend.models.user_models import LoginRequest
 from backend.services.db import get_db_connection
@@ -20,7 +20,6 @@ def login(data: LoginRequest):
 # REALTIME DATA
 @router.get("/realtime")
 def get_realtime():
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -32,7 +31,6 @@ def get_realtime():
     """)
 
     row = cursor.fetchone()
-
     cursor.close()
     conn.close()
 
@@ -85,42 +83,11 @@ def get_historical_report(
 
 
 # DSM DATA
-# DSM DATA
 @router.get("/dsm")
-<<<<<<< HEAD
-def get_dsm(date: str):
-=======
-def get_dsm():
+def get_dsm(date: date):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT generation, schedule
-        FROM realtime_data
-        ORDER BY timestamp DESC
-        LIMIT 1
-    """)
-
-    row = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    if not row:
-        return {"message": "No realtime data available"}
-
-    generation = float(row[0])
-    schedule = float(row[1])
-
-    rate = 50  # DSM rate (configurable later)
-
-    return compute_dsm(generation, schedule, rate)
->>>>>>> c35bbb8 (dsm is done)
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Fetch latest record for given date
     cursor.execute("""
         SELECT timestamp, plant_id, schedule, generation
         FROM realtime_data
@@ -136,22 +103,25 @@ def get_dsm():
         conn.close()
         return {"message": "No data found for given date"}
 
-    timestamp, plant_id, schedule, actual = row
+    timestamp, plant_id, schedule, generation = row
 
-    # DSM Calculation
-    deviation = actual - schedule
-    penalty = deviation * 50  # static rate for now
+    result = compute_dsm(float(generation), float(schedule), 50)
 
-    # Store in DSM_records
     cursor.execute("""
-        INSERT INTO DSM_records (
+        INSERT INTO dsm_records (
             timestamp, plant_id, schedule, actual, deviation, penalty
         )
         VALUES (%s, %s, %s, %s, %s, %s)
-    """, (timestamp, plant_id, schedule, actual, deviation, penalty))
+    """, (
+        timestamp,
+        plant_id,
+        schedule,
+        generation,
+        result["deviation"],
+        result["penalty"]
+    ))
 
     conn.commit()
-
     cursor.close()
     conn.close()
 
@@ -159,10 +129,11 @@ def get_dsm():
         "timestamp": timestamp,
         "plant_id": plant_id,
         "schedule": schedule,
-        "actual": actual,
-        "deviation": deviation,
-        "penalty": penalty
+        "actual": generation,
+        "deviation": result["deviation"],
+        "penalty": result["penalty"]
     }
+
 
 # LOGOUT
 @router.post("/logout")
