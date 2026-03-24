@@ -3,90 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Energy Monitor Login</title>
-
+    <title>Energy Monitor | Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
     <style>
+        :root {
+            --primary-color: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            /* Dark overlay + Your Custom Image */
+            background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.7)), 
+                        url('https://media.istockphoto.com/id/1332858442/photo/high-voltage-electric-power-lines-at-sunset.jpg?s=612x612&w=0&k=20&c=jBg1AAzA3mMas7EFstOIzyLcqY3iPJGtr59b_oNPmVQ=');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            overflow: hidden;
         }
 
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            width: 350px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        .login-card {
+            background: rgba(15, 23, 42, 0.8); /* Deep slate glass */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 380px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
         }
 
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        label {
-            font-weight: bold;
-        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h2 { margin: 0; font-size: 26px; color: #ffffff; letter-spacing: -0.5px; font-weight: 600; }
+        .header p { color: #94a3b8; font-size: 14px; margin-top: 8px; }
+
+        .form-group { margin-bottom: 22px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: #60a5fa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
         input {
             width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
         }
 
         button {
             width: 100%;
-            padding: 12px;
-            background: #007bff;
+            padding: 14px;
+            background: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 12px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
         }
 
-        button:hover {
-            background: #0056b3;
+        button:hover { 
+            background: #2563eb; 
+            box-shadow: 0 0 25px var(--accent-glow);
+            transform: translateY(-2px);
         }
 
-        #message {
-            text-align: center;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-
-        .error {
-            color: red;
-        }
-
-        .success {
-            color: green;
-        }
+        #message { text-align: center; margin-top: 20px; font-size: 14px; min-height: 20px; }
+        .error { color: #fca5a5; padding: 10px; background: rgba(220, 38, 38, 0.2); border-radius: 8px; }
+        .success { color: #86efac; padding: 10px; background: rgba(22, 163, 74, 0.2); border-radius: 8px; }
     </style>
 </head>
-
 <body>
 
-<div class="container">
-    <h2>Energy Monitor Login</h2>
+<div class="login-card">
+    <div class="header">
+        <h2>Grid Monitor</h2>
+        <p>Log in to manage energy assets</p>
+    </div>
 
-    <label>Username</label>
-    <input type="text" id="username" placeholder="Enter username">
+    <div class="form-group">
+        <label>Operator Username</label>
+        <input type="text" id="username" placeholder="Username" autocomplete="username">
+    </div>
 
-    <label>Password</label>
-    <input type="password" id="password" placeholder="Enter password">
+    <div class="form-group">
+        <label>Access Key</label>
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+    </div>
 
-    <button onclick="loginUser()">Login</button>
-
-    <p id="message"></p>
+    <button onclick="loginUser()">Secure Login</button>
+    <div id="message"></div>
 </div>
 
 <script>
@@ -95,13 +125,11 @@ async function loginUser() {
     const password = document.getElementById("password").value.trim();
     const message = document.getElementById("message");
 
-    // Clear previous message
     message.innerText = "";
     message.className = "";
 
-    // Validation
     if (!username || !password) {
-        message.innerText = "Please enter username and password";
+        message.innerText = "Error: All fields required.";
         message.className = "error";
         return;
     }
@@ -109,42 +137,32 @@ async function loginUser() {
     try {
         const response = await fetch("http://127.0.0.1:8000/login", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            message.innerText = data.message || "Login successful";
+            message.innerText = "Authenticated. Redirecting...";
             message.className = "success";
 
-            // Save user info
+            // Store token for subsequent dashboard requests
+            localStorage.setItem("token", data.token);
             localStorage.setItem("username", data.username);
-            localStorage.setItem("role", data.role || "");
 
-            // Redirect after 1 second
             setTimeout(() => {
                 window.location.href = "realtime.html";
-            }, 1000);
-
+            }, 1200);
         } else {
-            message.innerText = data.detail || "Login failed";
+            message.innerText = data.detail || "Access Denied.";
             message.className = "error";
         }
-
     } catch (error) {
-        console.error(error);
-        message.innerText = "Unable to connect to server";
+        message.innerText = "Server Error: Check API status.";
         message.className = "error";
     }
 }
 </script>
-
 </body>
 </html>
