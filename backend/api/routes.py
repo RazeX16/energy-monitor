@@ -8,16 +8,22 @@ from backend.services.dsm import compute_dsm
 router = APIRouter()
 
 #login
+from fastapi import APIRouter
+from backend.models.user_models import LoginRequest
+
+
 @router.post("/login")
 def login(data: LoginRequest):
-    if data.username == "admin" and data.password == "passward123":
+    if data.username == "admin" and data.password == "admin123":
         return {
             "message": "Login successful",
+            "token": "test-token",
             "username": data.username,
             "role": "admin"
         }
-
-    raise HTTPException(status_code=401, detail="Invalid username or password")
+    return {
+        "message": "Invalid username or password"
+    }
 
 # REALTIME DATA
 @router.get("/realtime")
@@ -53,7 +59,6 @@ from fastapi import APIRouter, Query
 from datetime import date, datetime, time, timedelta
 from backend.services.db import get_db_connection
 
-router = APIRouter()
 
 @router.get("/historical")
 def get_historical(
