@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historical Report</title>
+    <title>Historical Report UI</title>
     <style>
         * {
             box-sizing: border-box;
@@ -13,7 +13,7 @@
             margin: 0;
             font-family: Arial, sans-serif;
             background: linear-gradient(rgba(8, 20, 40, 0.75), rgba(8, 20, 40, 0.75)),
-                        url("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=1600&q=80");
+                        url("https://galooli.com/wp-content/uploads/2022/08/What-is-a-Smart-Grid-Top-Image.png");
             background-size: cover;
             background-position: center;
             min-height: 100vh;
@@ -34,6 +34,7 @@
         h1 {
             text-align: center;
             margin-bottom: 30px;
+            color: #fff;
         }
 
         .filters {
@@ -70,6 +71,7 @@
             color: white;
             font-size: 15px;
             cursor: pointer;
+            transition: 0.3s ease;
             height: 45px;
         }
 
@@ -147,72 +149,73 @@
         </div>
     </div>
 
-    <script>
-        async function loadReport() {
-            const startDate = document.getElementById("startDate").value;
-            const endDate = document.getElementById("endDate").value;
-            const reportContainer = document.getElementById("reportContainer");
+   <script>
+    async function loadReport() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const reportContainer = document.getElementById("reportContainer");
 
-            if (!startDate || !endDate) {
-                alert("Please select both start date and end date.");
-                return;
-            }
-
-            if (startDate > endDate) {
-                alert("Start date cannot be greater than end date.");
-                return;
-            }
-
-            try {
-                const response = await fetch(
-                    `http://127.0.0.1:8000/historical?start_date=${startDate}&end_date=${endDate}`
-                );
-
-                const result = await response.json();
-
-                if (!result.data || result.data.length === 0) {
-                    reportContainer.innerHTML = `<div class="empty-message">No historical data found.</div>`;
-                    return;
-                }
-
-                let tableHTML = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Generation</th>
-                                <th>Schedule</th>
-                                <th>Frequency</th>
-                                <th>Deviation</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                result.data.forEach(row => {
-                    tableHTML += `
-                        <tr>
-                            <td>${row.timestamp}</td>
-                            <td>${row.generation}</td>
-                            <td>${row.schedule}</td>
-                            <td>${row.frequency}</td>
-                            <td>${row.deviation}</td>
-                        </tr>
-                    `;
-                });
-
-                tableHTML += `
-                        </tbody>
-                    </table>
-                `;
-
-                reportContainer.innerHTML = tableHTML;
-
-            } catch (error) {
-                console.error("Error:", error);
-                reportContainer.innerHTML = `<div class="empty-message">Unable to connect to server.</div>`;
-            }
+        if (!startDate || !endDate) {
+            alert("Please select both start date and end date.");
+            return;
         }
-    </script>
+
+        if (startDate > endDate) {
+            alert("Start date cannot be greater than end date.");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/historical?start_date=${startDate}&end_date=${endDate}`
+            );
+
+            if (!response.ok) {
+                throw new Error("API error: " + response.status);
+            }
+
+            const result = await response.json();
+            const reportData = result.data || [];
+
+            if (reportData.length === 0) {
+                reportContainer.innerHTML = `<div class="empty-message">No data found</div>`;
+                return;
+            }
+
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Generation</th>
+                            <th>Schedule</th>
+                            <th>Frequency</th>
+                            <th>Deviation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            reportData.forEach(row => {
+                tableHTML += `
+                    <tr>
+                        <td>${row.timestamp ?? "--"}</td>
+                        <td>${row.generation ?? "--"}</td>
+                        <td>${row.schedule ?? "--"}</td>
+                        <td>${row.frequency ?? "--"}</td>
+                        <td>${row.deviation ?? "--"}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table>`;
+            reportContainer.innerHTML = tableHTML;
+
+        } catch (error) {
+            console.error(error);
+            reportContainer.innerHTML = `<div class="empty-message">Unable to load data</div>`;
+        }
+    }
+</script>
 </body>
 </html>
