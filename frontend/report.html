@@ -2,126 +2,217 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historical Report</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #cbd5e0;
-            padding: 20px;
+        * {
+            box-sizing: border-box;
         }
 
-        h2 {
-            text-align: center;
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(rgba(8, 20, 40, 0.75), rgba(8, 20, 40, 0.75)),
+                        url("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=1600&q=80");
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            color: white;
         }
 
         .container {
-            max-width: 900px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 1100px;
+            margin: 40px auto;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
-        .inputs {
-            margin-bottom: 20px;
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            margin-bottom: 25px;
+            align-items: end;
+        }
+
+        .input-group {
             display: flex;
-            gap: 10px;
+            flex-direction: column;
         }
 
-        input, button {
-            padding: 8px;
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="date"] {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
             font-size: 14px;
+            outline: none;
         }
 
         button {
-            background: #007bff;
-            color: white;
+            padding: 12px 20px;
             border: none;
+            border-radius: 10px;
+            background: #00c853;
+            color: white;
+            font-size: 15px;
             cursor: pointer;
+            height: 45px;
+        }
+
+        button:hover {
+            background: #009624;
+        }
+
+        .table-container {
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            background: rgba(255,255,255,0.95);
+            color: #222;
+            border-radius: 12px;
+            overflow: hidden;
         }
 
         th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
+            padding: 14px;
             text-align: center;
+            border-bottom: 1px solid #ddd;
         }
 
         th {
-            background: #007bff;
+            background: #1f3c88;
             color: white;
+        }
+
+        tr:hover {
+            background: #f2f6ff;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 20px;
+            color: #222;
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Historical Report</h1>
 
-<div class="container">
-    <h2>Historical Energy Report</h2>
+        <div class="filters">
+            <div class="input-group">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate">
+            </div>
 
-    <div class="inputs">
-        <label>Start Date:</label>
-        <input type="date" id="startDate">
+            <div class="input-group">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate">
+            </div>
 
-        <label>End Date:</label>
-        <input type="date" id="endDate">
+            <button onclick="loadReport()">Get Report</button>
+        </div>
 
-        <button onclick="loadReport()">Generate Report</button>
+        <div class="table-container" id="reportContainer">
+            <div class="empty-message">Select start date and end date to view report.</div>
+        </div>
     </div>
 
-    <table id="reportTable">
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Generation</th>
-                <th>Schedule</th>
-                <th>Frequency</th>
-                <th>Deviation</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-</div>
+    <script>
+        async function loadReport() {
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+            const reportContainer = document.getElementById("reportContainer");
 
-<script>
-async function loadReport() {
-    const start = document.getElementById("startDate").value;
-    const end = document.getElementById("endDate").value;
+            if (!startDate || !endDate) {
+                alert("Please select both start date and end date.");
+                return;
+            }
 
-    if (!start || !end) {
-        alert("Please select both dates");
-        return;
-    }
+            if (startDate > endDate) {
+                alert("Start date cannot be greater than end date.");
+                return;
+            }
 
-    const response = await fetch(
-        `http://127.0.0.1:8000/historical?start_date=${start}&end_date=${end}`
-    );
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:8000/historical?start_date=${startDate}&end_date=${endDate}`
+                );
 
-    const data = await response.json();
+                const result = await response.json();
 
-    const tableBody = document.querySelector("#reportTable tbody");
-    tableBody.innerHTML = "";
+                if (!result.data || result.data.length === 0) {
+                    reportContainer.innerHTML = `<div class="empty-message">No historical data found.</div>`;
+                    return;
+                }
 
-    data.forEach(row => {
-        const tr = document.createElement("tr");
+                let tableHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Generation</th>
+                                <th>Schedule</th>
+                                <th>Frequency</th>
+                                <th>Deviation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
 
-        tr.innerHTML = `
-            <td>${row.timestamp}</td>
-            <td>${row.generation}</td>
-            <td>${row.schedule}</td>
-            <td>${row.frequency}</td>
-            <td>${row.deviation}</td>
-        `;
+                result.data.forEach(row => {
+                    tableHTML += `
+                        <tr>
+                            <td>${row.timestamp}</td>
+                            <td>${row.generation}</td>
+                            <td>${row.schedule}</td>
+                            <td>${row.frequency}</td>
+                            <td>${row.deviation}</td>
+                        </tr>
+                    `;
+                });
 
-        tableBody.appendChild(tr);
-    });
-}
-</script>
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
 
+                reportContainer.innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error("Error:", error);
+                reportContainer.innerHTML = `<div class="empty-message">Unable to connect to server.</div>`;
+            }
+        }
+    </script>
 </body>
 </html>

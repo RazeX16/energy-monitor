@@ -49,40 +49,46 @@ def get_realtime():
 
 
 # HISTORICAL DATA
+from fastapi import APIRouter, Query
+from datetime import date, datetime, time, timedelta
+from backend.services.db import get_db_connection
+
+router = APIRouter()
+
 @router.get("/historical")
-def get_historical_report(
-    start: datetime = Query(...), 
-    end: datetime = Query(...)
+def get_historical(
+    start_date: date = Query(...),
+    end_date: date = Query(...)
 ):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    try:
-        query = """
-            SELECT 
-                time_bucket('15 minutes', timestamp) AS block,
-                AVG(generation), AVG(frequency), SUM(deviation)
-            FROM realtime_data
-            WHERE timestamp >= %s AND timestamp <= %s
-            GROUP BY block
-            ORDER BY block DESC;
-        """
-        cursor.execute(query, (start, end))
-        rows = cursor.fetchall()
+    start_datetime = datetime.combine(start_date, time.min)
+    end_datetime = datetime.combine(end_date + timedelta(days=1), time.min)
 
-        return [
-            {
-                "time": r[0],
-                "gen": round(r[1], 2),
-                "freq": round(r[2], 2),
-                "dev": r[3]
-            }
-            for r in rows
-        ]
-    finally:
-        cursor.close()
-        conn.close()
+    cursor.execute("""
+        SELECT timestamp, generation, schedule, frequency, deviation
+        FROM realtime_data
+        WHERE timestamp >= %s AND timestamp < %s
+        ORDER BY timestamp ASC
+    """, (start_datetime, end_datetime))
 
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    data = []
+    for row in rows:
+        data.append({
+            "timestamp": str(row[0]),
+            "generation": row[1],
+            "schedule": row[2],
+            "frequency": row[3],
+            "deviation": row[4]
+        })
+
+    return {"data": data}
 
 # DSM DATA
 @router.get("/dsm")
