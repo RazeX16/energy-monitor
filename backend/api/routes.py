@@ -96,13 +96,16 @@ def get_historical(
     return {"data": data}
 
 # DSM DATA
+from datetime import timedelta # Make sure this is imported at the top of your file!
+
 @router.get("/dsm")
 def get_dsm(date: date):
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # --- 1. GET LATEST RECORD (For Top Cards) ---
     cursor.execute("""
-        SELECT timestamp, plant_id, schedule, generation
+        SELECT timestamp, plant_id, schedule, generation, frequency
         FROM realtime_data
         WHERE DATE(timestamp) = %s
         ORDER BY timestamp DESC
@@ -116,35 +119,79 @@ def get_dsm(date: date):
         conn.close()
         return {"message": "No data found for given date"}
 
-    timestamp, plant_id, schedule, generation = row
-
+    # Unpack the row (Now including frequency!)
+    timestamp, plant_id, schedule, generation, frequency = row
+    
+    # Calculate DSM Penalty
     result = compute_dsm(float(generation), float(schedule), 50)
 
+    # Save the calculation to the database
+   # Save the calculation to the database
     cursor.execute("""
-        INSERT INTO dsm_records (
+        INSERT INTO DSM_records (
             timestamp, plant_id, schedule, actual, deviation, penalty
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (timestamp, plant_id) 
+        DO UPDATE SET 
+            schedule = EXCLUDED.schedule,
+            actual = EXCLUDED.actual,
+            deviation = EXCLUDED.deviation,
+            penalty = EXCLUDED.penalty;
     """, (
         timestamp,
         plant_id,
-        schedule,
-        generation,
+        schedule,      # This maps to the 'schedule' column
+        generation,    # This maps to the 'actual' column
         result["deviation"],
         result["penalty"]
     ))
-
+    
     conn.commit()
+
+    # --- 2. GET HISTORICAL DATA (For the Chart) ---
+    # Calculate the time 2 hours before the most recent timestamp
+    two_hours_ago = timestamp - timedelta(hours=2)
+
+    # Fetch all records within that 2-hour window, ordered from oldest to newest
+    cursor.execute("""
+        SELECT timestamp, schedule, generation
+        FROM realtime_data
+        WHERE timestamp >= %s AND timestamp <= %s
+        ORDER BY timestamp ASC
+    """, (two_hours_ago, timestamp))
+
+    chart_rows = cursor.fetchall()
+
+    # Format the data into lists for Chart.js
+    labels = []
+    scheduled_data = []
+    actual_data = []
+
+    for r in chart_rows:
+        row_time = r[0]
+        labels.append(row_time.strftime("%H:%M")) # Converts full datetime to just "10:15"
+        scheduled_data.append(r[1])
+        actual_data.append(r[2])
+
+    chart_data = {
+        "labels": labels,
+        "scheduled": scheduled_data,
+        "actual": actual_data
+    }
+
     cursor.close()
     conn.close()
 
+    # --- 3. RETURN EVERYTHING TO THE FRONTEND ---
     return {
         "timestamp": timestamp,
         "plant_id": plant_id,
         "schedule": schedule,
         "actual": generation,
+        "frequency": frequency,
         "deviation": result["deviation"],
-        "penalty": result["penalty"]
+        "penalty": result["penalty"],
+        "chartData": chart_data  # The frontend will inject this straight into the graph
     }
 
 

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSM & Deviation Settlement | Energy Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <nav class="bg-gray-800 w-full md:w-64 flex-shrink-0 flex flex-col">
+            <div class="p-4 text-white text-2xl font-bold border-b border-gray-700">
+                IPPAI Monitor
+            </div>
+            <div class="p-4 flex flex-col space-y-2 flex-grow">
+                <a href="realtime.html" class="text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition-colors">Real-time</a>
+                <a href="dsm.html" class="text-white bg-blue-600 p-2 rounded shadow">DSM & Deviation</a>
+                <a href="report.html" class="text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition-colors">Historical Reports</a>
+                
+                <div class="mt-auto pt-8">
+                    <button onclick="logoutUser()" class="w-full text-left text-red-400 hover:text-red-300 hover:bg-gray-700 p-2 rounded transition-colors flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Logout Session
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">Demand Side Management (DSM)</h1>
+                <span class="text-sm text-gray-500 font-medium bg-white px-3 py-1 rounded-full shadow-sm" id="last-updated">Last updated: --:--:--</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Grid Frequency</h2>
+                    <p class="text-3xl font-bold text-gray-800 mt-2" id="grid-freq">-- Hz</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Scheduled (MW)</h2>
+                    <p class="text-3xl font-bold text-blue-600 mt-2" id="schedule-mw">--</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Actual (MW)</h2>
+                    <p class="text-3xl font-bold text-gray-800 mt-2" id="actual-mw">--</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400 transition-colors duration-300" id="deviation-card">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Deviation (MW)</h2>
+                    <p class="text-3xl font-bold mt-2" id="deviation-mw">--</p>
+                    <p class="text-sm mt-1 font-semibold" id="deviation-status">Loading...</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400 transition-colors duration-300" id="penalty-card">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Est. Penalty</h2>
+                    <p class="text-3xl font-bold mt-2" id="penalty-inr">--</p>
+                    <p class="text-sm mt-1 font-semibold text-gray-500" id="penalty-status">Calculating...</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8 w-full h-96">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Drawal Profile (Last 2 Hours)</h2>
+                <canvas id="dsmChart"></canvas>
+            </div>
+        </main>
+    </div>
+
+     <script>
+    // 1. Check Authentication on Page Load
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("Checking session token...");
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.warn("No token found! Redirecting to login...");
+            window.location.href = "login.html"; 
+        } else {
+            console.log("Token found. Access granted.");
+        }
+    });
+
+    // 2. Initialize Chart.js
+    const ctx = document.getElementById('dsmChart').getContext('2d');
+    const dsmChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [
+                { label: 'Scheduled (MW)', borderColor: '#3b82f6', data: [], fill: false },
+                { label: 'Actual (MW)', borderColor: '#1f2937', data: [], borderDash: [5, 5] }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 3. The main data fetching function
+    async function fetchDSMData() {
+        console.log("🚀 fetchDSMData() has started!");
+        
+        try {
+            const token = localStorage.getItem("token");
+            const today = new Date().toISOString().split('T')[0];
+            const apiUrl = `http://127.0.0.1:8000/dsm?date=${today}`;
+            
+            console.log(`Attempting to fetch from: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+            }
+
+            const data = await response.json(); 
+            console.log("✅ Successfully unpacked data:", data);
+
+            // Handle whether the API returned an array or an object
+            const currentData = Array.isArray(data) ? data[0] : data;
+
+            // Stop execution if currentData is undefined (empty database)
+            if (!currentData) {
+                console.error("The API returned an empty response (No data for today yet).");
+                return; 
+            }
+
+            // Use the official deviation from the backend!
+            const deviation = currentData.deviation || 0;
+
+            // Update Metric Cards safely (Notice currentData.schedule has no 'd'!)
+            document.getElementById('grid-freq').innerText = (currentData.frequency || 0).toFixed(2) + ' Hz';
+            document.getElementById('schedule-mw').innerText = (currentData.schedule || 0).toFixed(2); 
+            document.getElementById('actual-mw').innerText = (currentData.actual || 0).toFixed(2);
+            document.getElementById('deviation-mw').innerText = (deviation > 0 ? '+' : '') + deviation.toFixed(2);
+            document.getElementById('last-updated').innerText = 'Last updated: ' + new Date().toLocaleTimeString();
+            // Update Card Colors
+            const devCard = document.getElementById('deviation-card');
+            const devStatus = document.getElementById('deviation-status');
+            const penaltyCard = document.getElementById('penalty-card');
+            const penaltyInr = document.getElementById('penalty-inr');
+            const penaltyStatus = document.getElementById('penalty-status');
+
+            devCard.className = "bg-white rounded-xl shadow-sm p-5 border-l-4 transition-colors duration-300";
+            penaltyCard.className = "bg-white rounded-xl shadow-sm p-5 border-l-4 transition-colors duration-300";
+
+            if (deviation > 0 && currentData.frequency < 50.05) {
+                devCard.classList.add('border-red-500');
+                devStatus.className = 'text-sm mt-1 font-semibold text-red-600';
+                devStatus.innerText = 'Over-drawal Active';
+
+                penaltyCard.classList.add('border-red-500');
+                penaltyInr.className = 'text-3xl font-bold mt-2 text-red-600';
+                const penaltyValue = currentData.penalty || 0; 
+                penaltyInr.innerText = '₹ ' + penaltyValue.toLocaleString('en-IN');
+                penaltyStatus.className = 'text-sm mt-1 font-semibold text-red-600';
+                penaltyStatus.innerText = 'Charge Applicable';
+            } else {
+                devCard.classList.add('border-green-500');
+                devStatus.className = 'text-sm mt-1 font-semibold text-green-600';
+                devStatus.innerText = deviation <= 0 ? 'Under-drawal (Safe)' : 'Within Limits';
+
+                penaltyCard.classList.add('border-green-500');
+                penaltyInr.className = 'text-3xl font-bold mt-2 text-green-600';
+                penaltyInr.innerText = '₹ 0';
+                penaltyStatus.className = 'text-sm mt-1 font-semibold text-green-600';
+                penaltyStatus.innerText = 'No Penalty Active';
+            }
+
+            // Update Chart
+            if (currentData.chartData && currentData.chartData.labels) {
+                dsmChart.data.labels = currentData.chartData.labels;
+                dsmChart.data.datasets[0].data = currentData.chartData.scheduled;
+                dsmChart.data.datasets[1].data = currentData.chartData.actual;
+                dsmChart.update();
+            }
+
+        } catch (error) {
+            console.error("❌ Fetch failed:", error);
+        }
+    }
+
+    // 4. Logout Function
+    function logoutUser() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    // 5. Start the loop
+    console.log("Starting the 15-second data loop...");
+    fetchDSMData();
+    setInterval(fetchDSMData, 15000); 
+</script>
